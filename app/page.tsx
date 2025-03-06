@@ -129,10 +129,77 @@ const Home = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate form before submission
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+    setSubmitMessage({ type: "", text: "" });
+
+    try {
+      const url = selectedArticle
+        ? `https://api-trials.x5.com.au/api/articles/${selectedArticle.id}`
+        : "https://api-trials.x5.com.au/api/articles";
+
+      const method = selectedArticle ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({
+          title,
+          content,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.meta.success) {
+        setTitle("");
+        setContent("");
+        setFormErrors({});
+        setSelectedArticle(null);
+        setCurrentView("list");
+        fetchArticles();
+        setSubmitMessage({
+          type: "success",
+          text: `Article ${selectedArticle ? "updated" : "created"} successfully!`,
+        });
+      } else {
+        const errorMessage =
+          data.meta?.message ||
+          `Failed to ${selectedArticle ? "update" : "create"} article`;
+        setSubmitMessage({
+          type: "error",
+          text: errorMessage,
+        });
+
+        if (data.errors) {
+          setFormErrors(data.errors);
+        }
+      }
+    } catch (error) {
+      console.error(
+        `Error ${selectedArticle ? "updating" : "creating"} article:`,
+        error,
+      );
+      setSubmitMessage({
+        type: "error",
+        text: `Failed to ${selectedArticle ? "update" : "create"} article. Please try again.`,
+      });
+    } finally {
+      setIsSubmitting(false);
+      setTimeout(() => setSubmitMessage({ type: "", text: "" }), 3000);
+    }
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     if (!validateForm()) return;
 
     setIsSubmitting(true);
@@ -140,9 +207,9 @@ const Home = () => {
 
     try {
       const response = await fetch(
-        "https://api-trials.x5.com.au/api/articles",
+        `https://api-trials.x5.com.au/api/articles/${selectedArticle?.id}`,
         {
-          method: "POST",
+          method: "PUT",
           headers: {
             "Content-Type": "application/json",
             "X-Requested-With": "XMLHttpRequest",
@@ -161,33 +228,30 @@ const Home = () => {
         setContent("");
         setFormErrors({});
         setCurrentView("list");
-        fetchArticles(); // Refresh the list
+        fetchArticles();
         setSubmitMessage({
           type: "success",
-          text: "Article created successfully!",
+          text: "Article updated successfully!",
         });
       } else {
-        // Handle API error with message
-        const errorMessage = data.meta?.message || "Failed to create article";
+        const errorMessage = data.meta?.message || "Failed to update article";
         setSubmitMessage({
           type: "error",
           text: errorMessage,
         });
 
-        // Handle validation errors from API if provided
         if (data.errors) {
           setFormErrors(data.errors);
         }
       }
     } catch (error) {
-      console.error("Error creating article:", error);
+      console.error("Error updating article:", error);
       setSubmitMessage({
         type: "error",
-        text: "Failed to create article. Please try again.",
+        text: "Failed to update article. Please try again.",
       });
     } finally {
       setIsSubmitting(false);
-      // Clear message after 3 seconds
       setTimeout(() => setSubmitMessage({ type: "", text: "" }), 3000);
     }
   };
@@ -227,10 +291,6 @@ const Home = () => {
     </div>
   );
 
-  // const FormView = () => (
-
-  // );
-
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="rounded-lg bg-white p-6 shadow-sm">
@@ -263,11 +323,11 @@ const Home = () => {
                 resetForm();
                 setCurrentView("form");
               }}
-              className={`flex w-[17vw] pb-2 ${currentView === "form" ? "border-b-2 border-green-500 text-green-500" : "text-gray-500"}`}
+              className={`flex w-[17vw] pb-2 ${currentView === "form" || currentView === "edit" ? "border-b-2 border-green-500 text-green-500" : "text-gray-500"}`}
             >
               <Image
                 src={
-                  currentView === "form"
+                  currentView === "form" || currentView === "edit"
                     ? "/addEditArticle-active.png"
                     : "/addEditArticle-unactive.png"
                 }
@@ -366,9 +426,14 @@ const Home = () => {
                               <Eye size={16} />
                             </button>
                             <button
-                              onClick={() => fetchArticleById(article.id)}
+                              onClick={() => {
+                                setTitle(article.title);
+                                setContent(article.content);
+                                setSelectedArticle(article);
+                                setCurrentView("edit");
+                              }}
                               className="rounded-full bg-yellow-100 p-2 text-yellow-600 hover:bg-yellow-200"
-                              aria-label="View article"
+                              aria-label="Edit article"
                             >
                               <Pencil size={16} />
                             </button>
@@ -515,7 +580,7 @@ const Home = () => {
                 type="submit"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "Adding..." : "Add"}
+                {isSubmitting ? "Saving..." : "Save"}
               </button>
 
               <button

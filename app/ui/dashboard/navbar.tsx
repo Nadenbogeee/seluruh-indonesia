@@ -16,7 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Image from "next/image";
 
 const NavBar = () => {
-  const [position, setPosition] = React.useState("bottom");
+  const [position, setPosition] = React.useState("English");
 
   return (
     <>
@@ -52,18 +52,15 @@ const NavBar = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56">
-              <DropdownMenuLabel>Panel Position</DropdownMenuLabel>
+              <DropdownMenuLabel>Languages</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuRadioGroup
                 value={position}
                 onValueChange={setPosition}
               >
-                <DropdownMenuRadioItem value="top">Top</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="bottom">
-                  Bottom
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="right">
-                  Right
+                <DropdownMenuRadioItem value="English">English</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="Indonesia">
+                  Indonesia
                 </DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
