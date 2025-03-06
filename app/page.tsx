@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Eye, Trash2, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import Image from "next/image";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +12,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 interface Article {
@@ -64,7 +62,6 @@ const Home = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [submitMessage, setSubmitMessage] = useState({ type: "", text: "" });
-  const [deleteMessage, setDeleteMessage] = useState({ type: "", text: "" });
 
   const fetchArticles = useCallback(async () => {
     setLoading(true);
@@ -148,7 +145,6 @@ const Home = () => {
     } finally {
       setDeleteConfirmation(false);
       setIsDeleting(false);
-      setTimeout(() => setDeleteMessage({ type: "", text: "" }), 3000);
     }
   };
 
