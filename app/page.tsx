@@ -1,17 +1,49 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Eye, Trash2, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import Image from "next/image";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
 interface Article {
   id: number;
   title: string;
   content: string;
   created_at: string;
 }
+
 interface FormErrors {
   title?: string;
   content?: string;
+}
+
+interface PageInfo {
+  last_page: number;
+}
+
+interface ApiResponse {
+  meta: {
+    success: boolean;
+    message?: string;
+  };
+  data:
+    | {
+        articles: Article[];
+        page_info: PageInfo;
+      }
+    | Article;
+  errors?: FormErrors;
 }
 
 const Home = () => {
@@ -23,15 +55,18 @@ const Home = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
+  const [deletConfirmation, setDeleteConfirmation] = useState(false);
 
   // Form states
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [submitMessage, setSubmitMessage] = useState({ type: "", text: "" });
+  const [deleteMessage, setDeleteMessage] = useState({ type: "", text: "" });
 
-  const fetchArticles = async () => {
+  const fetchArticles = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(
@@ -43,8 +78,8 @@ const Home = () => {
           },
         },
       );
-      const data = await response.json();
-      if (data.meta.success) {
+      const data = (await response.json()) as ApiResponse;
+      if (data.meta.success && "articles" in data.data) {
         setArticles(data.data.articles);
         setTotalPages(data.data.page_info.last_page);
       }
@@ -52,9 +87,9 @@ const Home = () => {
       console.error("Error fetching articles:", error);
     }
     setLoading(false);
-  };
+  }, [searchQuery, currentPage, pageSize]);
 
-  const fetchArticleById = async (id: any) => {
+  const fetchArticleById = async (id: number) => {
     try {
       const response = await fetch(
         `https://api-trials.x5.com.au/api/articles/${id}`,
@@ -65,9 +100,9 @@ const Home = () => {
           },
         },
       );
-      const data = await response.json();
-      if (data.meta.success) {
-        setSelectedArticle(data.data);
+      const data = (await response.json()) as ApiResponse;
+      if (data.meta.success && !("articles" in data.data)) {
+        setSelectedArticle(data.data as Article);
         setCurrentView("detail");
       }
     } catch (error) {
@@ -75,8 +110,12 @@ const Home = () => {
     }
   };
 
-  const deleteArticle = async (id: any) => {
-    if (!confirm("Are you sure you want to delete this article?")) return;
+  const deleteArticle = async (id: number) => {
+    setDeleteConfirmation(true);
+    if (deletConfirmation === true) return;
+
+    setIsDeleting(true);
+    setTimeout(() => setSubmitMessage({ type: "", text: "" }), 3000);
 
     try {
       const response = await fetch(
@@ -89,7 +128,7 @@ const Home = () => {
           },
         },
       );
-      const data = await response.json();
+      const data = (await response.json()) as ApiResponse;
       if (data.meta.success) {
         fetchArticles(); // Refresh the list
         setSubmitMessage({
@@ -106,14 +145,18 @@ const Home = () => {
         text: "Failed to delete article.",
       });
       setTimeout(() => setSubmitMessage({ type: "", text: "" }), 3000);
+    } finally {
+      setDeleteConfirmation(false);
+      setIsDeleting(false);
+      setTimeout(() => setDeleteMessage({ type: "", text: "" }), 3000);
     }
   };
 
   useEffect(() => {
     fetchArticles();
-  }, [currentPage, pageSize, searchQuery]);
+  }, [fetchArticles]);
 
-  const formatDate = (dateString: any) => {
+  const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "short",
@@ -122,7 +165,7 @@ const Home = () => {
   };
 
   const validateForm = () => {
-    const errors: any = {};
+    const errors: FormErrors = {};
     if (!title.trim()) errors.title = "Title is required";
     if (!content.trim()) errors.content = "Content is required";
     setFormErrors(errors);
@@ -156,7 +199,7 @@ const Home = () => {
         }),
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as ApiResponse;
 
       if (data.meta.success) {
         setTitle("");
@@ -190,65 +233,6 @@ const Home = () => {
       setSubmitMessage({
         type: "error",
         text: `Failed to ${selectedArticle ? "update" : "create"} article. Please try again.`,
-      });
-    } finally {
-      setIsSubmitting(false);
-      setTimeout(() => setSubmitMessage({ type: "", text: "" }), 3000);
-    }
-  };
-
-  const handleEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateForm()) return;
-
-    setIsSubmitting(true);
-    setSubmitMessage({ type: "", text: "" });
-
-    try {
-      const response = await fetch(
-        `https://api-trials.x5.com.au/api/articles/${selectedArticle?.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Requested-With": "XMLHttpRequest",
-          },
-          body: JSON.stringify({
-            title,
-            content,
-          }),
-        },
-      );
-
-      const data = await response.json();
-
-      if (data.meta.success) {
-        setTitle("");
-        setContent("");
-        setFormErrors({});
-        setCurrentView("list");
-        fetchArticles();
-        setSubmitMessage({
-          type: "success",
-          text: "Article updated successfully!",
-        });
-      } else {
-        const errorMessage = data.meta?.message || "Failed to update article";
-        setSubmitMessage({
-          type: "error",
-          text: errorMessage,
-        });
-
-        if (data.errors) {
-          setFormErrors(data.errors);
-        }
-      }
-    } catch (error) {
-      console.error("Error updating article:", error);
-      setSubmitMessage({
-        type: "error",
-        text: "Failed to update article. Please try again.",
       });
     } finally {
       setIsSubmitting(false);
@@ -395,13 +379,13 @@ const Home = () => {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan="5" className="p-4 text-center">
+                      <td colSpan={5} className="p-4 text-center">
                         Loading...
                       </td>
                     </tr>
                   ) : articles.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="p-4 text-center">
+                      <td colSpan={5} className="p-4 text-center">
                         No articles found
                       </td>
                     </tr>
@@ -437,13 +421,42 @@ const Home = () => {
                             >
                               <Pencil size={16} />
                             </button>
-                            <button
-                              onClick={() => deleteArticle(article.id)}
-                              className="rounded-full bg-red-100 p-2 text-red-600 hover:bg-red-200"
-                              aria-label="Delete article"
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                            {/*  */}
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <button
+                                  // onClick={() => deleteArticle(article.id)}
+                                  className="rounded-full bg-red-100 p-2 text-red-600 hover:bg-red-200"
+                                  // aria-label="Delete article"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </DialogTrigger>
+                              <DialogContent className="sm:max-w-[425px]">
+                                <DialogHeader>
+                                  <DialogTitle className="flex gap-5">
+                                    <Trash2 size={16} /> Delete Article
+                                  </DialogTitle>
+                                  <DialogDescription>
+                                    Are you sure you want to delete it? You
+                                    can’t undo this action.
+                                  </DialogDescription>
+                                </DialogHeader>
+
+                                <DialogFooter>
+                                  <Button type="submit" variant="secondary">
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    onClick={() => deleteArticle(article.id)}
+                                    variant="destructive"
+                                  >
+                                    {isDeleting ? "Deleting..." : "Delete"}
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                            {/*  */}
                           </div>
                         </td>
                       </tr>

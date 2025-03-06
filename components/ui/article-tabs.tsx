@@ -51,7 +51,9 @@ export function ArticleTabs() {
           <CardHeader>
             <CardTitle>Password</CardTitle>
             <CardDescription>
-              Change your password here. After saving, you'll be logged out.
+              <p>
+                Change your password here. After saving, you'll be logged out.
+              </p>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
