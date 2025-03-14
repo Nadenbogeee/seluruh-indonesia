@@ -13,6 +13,8 @@ pnpm dev
 # or
 bun dev
 ```
+Deployment can be accessed by this link : https://seluruh-indonesia-git-master-yoga-nadens-projects.vercel.app/
+
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
